@@ -1,0 +1,42 @@
+{
+  "name": "Kizuna Alert AI - Japan Multilingual Disaster Copilot",
+  "short_name": "Kizuna Alert",
+  "description": "Real-time, AI-powered multilingual disaster guidance across Japan for Travelers, Workers, and Residents",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["utilities", "emergency", "travel"],
+  "shortcuts": [
+    {
+      "name": "Emergency Panic Voice",
+      "url": "/?mode=voice",
+      "description": "Instant voice disaster guidance"
+    },
+    {
+      "name": "SOS Offline Pack",
+      "url": "/?mode=sos",
+      "description": "Zero-signal SOS audio and cards"
+    }
+  ]
+}

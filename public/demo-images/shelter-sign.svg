@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <rect x="5" y="5" width="590" height="390" rx="15" fill="#1e3a8a" stroke="#ffffff" stroke-width="8" />
+  
+  <rect x="25" y="25" width="550" height="70" rx="8" fill="#ffffff" />
+  <text x="300" y="70" font-family="'Hiragino Sans', 'Meiryo', 'Noto Sans JP', sans-serif" font-weight="900" font-size="34" fill="#1e3a8a" text-anchor="middle">指定緊急避難場所</text>
+  
+  <text x="300" y="118" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#93c5fd" text-anchor="middle" letter-spacing="1">DESIGNATED EMERGENCY EVACUATION SHELTER</text>
+
+  <!-- Shelter Name Card -->
+  <rect x="40" y="140" width="520" height="60" rx="8" fill="#0f172a" stroke="#3b82f6" stroke-width="2" />
+  <text x="300" y="180" font-family="'Hiragino Sans', 'Meiryo', sans-serif" font-weight="bold" font-size="24" fill="#ffffff" text-anchor="middle">恩納村総合コミュニティセンター (Community Center)</text>
+
+  <!-- Disaster Icons compatibility row -->
+  <g transform="translate(40, 220)">
+    <!-- Flood -->
+    <rect x="0" y="0" width="95" height="90" rx="8" fill="#ffffff" />
+    <circle cx="47" cy="35" r="22" fill="#2563eb" />
+    <text x="47" y="42" font-size="20" text-anchor="middle" fill="#fff">🌊</text>
+    <text x="47" y="75" font-family="'Hiragino Sans', sans-serif" font-size="14" font-weight="bold" fill="#1e3a8a" text-anchor="middle">洪水 ◯</text>
+
+    <!-- Earthquake -->
+    <rect x="105" y="0" width="95" height="90" rx="8" fill="#ffffff" />
+    <circle cx="152" cy="35" r="22" fill="#dc2626" />
+    <text x="152" y="42" font-size="20" text-anchor="middle" fill="#fff">🏚️</text>
+    <text x="152" y="75" font-family="'Hiragino Sans', sans-serif" font-size="14" font-weight="bold" fill="#1e3a8a" text-anchor="middle">地震 ◯</text>
+
+    <!-- Tsunami -->
+    <rect x="210" y="0" width="95" height="90" rx="8" fill="#ffffff" />
+    <circle cx="257" cy="35" r="22" fill="#0284c7" />
+    <text x="257" y="42" font-size="20" text-anchor="middle" fill="#fff">🌀</text>
+    <text x="257" y="75" font-family="'Hiragino Sans', sans-serif" font-size="14" font-weight="bold" fill="#1e3a8a" text-anchor="middle">津波 ◯</text>
+
+    <!-- Fire -->
+    <rect x="315" y="0" width="95" height="90" rx="8" fill="#ffffff" />
+    <circle cx="362" cy="35" r="22" fill="#ea580c" />
+    <text x="362" y="42" font-size="20" text-anchor="middle" fill="#fff">🔥</text>
+    <text x="362" y="75" font-family="'Hiragino Sans', sans-serif" font-size="14" font-weight="bold" fill="#1e3a8a" text-anchor="middle">火災 ◯</text>
+
+    <!-- Landslide -->
+    <rect x="420" y="0" width="95" height="90" rx="8" fill="#ffffff" />
+    <circle cx="467" cy="35" r="22" fill="#b91c1c" />
+    <text x="467" y="42" font-size="20" text-anchor="middle" fill="#fff">⛰️</text>
+    <text x="467" y="75" font-family="'Hiragino Sans', sans-serif" font-size="14" font-weight="bold" fill="#b91c1c" text-anchor="middle">土砂 ✕</text>
+  </g>
+
+  <text x="300" y="360" font-family="'Hiragino Sans', sans-serif" font-size="16" fill="#bfdbfe" text-anchor="middle">非常用電源・Wi-Fi・多言語通訳支援拠点あり</text>
+</svg>

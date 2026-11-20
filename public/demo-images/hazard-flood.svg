@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <rect x="5" y="5" width="590" height="390" rx="15" fill="#450a0a" stroke="#dc2626" stroke-width="8" />
+  
+  <!-- Danger Header -->
+  <rect x="25" y="25" width="550" height="75" rx="8" fill="#dc2626" />
+  <text x="300" y="75" font-family="'Hiragino Sans', 'Meiryo', sans-serif" font-weight="900" font-size="36" fill="#ffffff" text-anchor="middle">⚠️ 道路冠水危険・通行止め</text>
+  
+  <text x="300" y="125" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#fca5a5" text-anchor="middle" letter-spacing="1">DANGER: ROAD SUBMERGED / CLOSED TO ALL VEHICLES</text>
+
+  <!-- Graphic and warning -->
+  <rect x="40" y="150" width="520" height="150" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2" />
+  
+  <!-- Water wave animation mockup -->
+  <path d="M 60 220 Q 120 200, 180 220 T 300 220 T 420 220 T 540 220 L 540 280 L 60 280 Z" fill="#0284c7" opacity="0.6" />
+  
+  <!-- Car stuck in water -->
+  <rect x="230" y="195" width="120" height="40" rx="8" fill="#e2e8f0" />
+  <circle cx="260" cy="235" r="12" fill="#0f172a" />
+  <circle cx="320" cy="235" r="12" fill="#0f172a" />
+  <text x="300" y="185" font-family="'Hiragino Sans', sans-serif" font-weight="bold" font-size="18" fill="#f87171" text-anchor="middle">冠水深 80cm 浸水中</text>
+
+  <g fill="#fef08a" font-family="'Hiragino Sans', sans-serif" font-weight="bold">
+    <text x="80" y="270" font-size="18">✕ 車両進入禁止 (Do Not Enter)</text>
+    <text x="350" y="270" font-size="18">高所へ迂回してください</text>
+  </g>
+
+  <text x="300" y="355" font-family="'Hiragino Sans', sans-serif" font-size="16" fill="#fecaca" text-anchor="middle">沖縄国道事務所・恩納村土木課 / Okinawa Road Bureau</text>
+</svg>
