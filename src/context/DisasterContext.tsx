@@ -25,6 +25,7 @@ interface DisasterContextType {
   showOnboarding: boolean;
   setShowOnboarding: (show: boolean) => void;
   activePresetId: string;
+  setActivePresetId: (id: string) => void;
   applyPreset: (presetId: string) => void;
   queryElevationForCoords: (lat: number, lng: number) => Promise<number>;
 }
@@ -178,6 +179,7 @@ export function DisasterProvider({ children }: { children: React.ReactNode }) {
         showOnboarding,
         setShowOnboarding,
         activePresetId,
+        setActivePresetId,
         applyPreset,
         queryElevationForCoords,
       }}

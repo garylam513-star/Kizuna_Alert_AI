@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { getGeminiClient } from '@/lib/gemini';
 import { DisasterType, Language, LocationState, Persona, VoiceAssistResult } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -64,16 +64,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { client: ai, modelName } = getGeminiClient();
 
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    if (!ai) {
       const fallback = generateFallbackVoiceResponse(query, disasterType || 'normal', location || { lat: 26.495, lng: 127.854, placeName: 'Onna Coast', elevationMeters: 3.2 }, language || 'en');
       return NextResponse.json(fallback);
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
-
       const languageNames: Record<Language, string> = {
         en: 'English',
         ja: 'Japanese (日本語)',
@@ -98,7 +96,7 @@ Return JSON only matching this schema:
 }`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: modelName,
         contents: [
           {
             role: 'user',

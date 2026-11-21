@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { getGeminiClient } from '@/lib/gemini';
 import { HazardScanResult, Language } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -83,16 +83,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing image payload' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { client: ai, modelName } = getGeminiClient();
 
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    if (!ai) {
       const fallback = generateFallbackScan(sampleHint || imageBase64?.slice(0, 100) || '', language);
       return NextResponse.json(fallback);
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
-
       const languageNames: Record<Language, string> = {
         en: 'English',
         ja: 'Japanese (日本語)',
@@ -130,7 +128,7 @@ Return JSON only matching this schema:
       const cleanBase64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: modelName,
         contents: [
           {
             role: 'user',

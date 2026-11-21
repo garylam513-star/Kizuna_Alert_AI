@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { getGeminiClient } from '@/lib/gemini';
 import { AIBriefing, DisasterType, Language, LocationState, Persona } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -213,18 +213,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { client: ai, modelName, isVertex } = getGeminiClient();
 
-    // If no API key configured, use high-fidelity curated emergency intelligence immediately
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    // If no API key or Vertex project configured, use high-fidelity curated emergency intelligence immediately
+    if (!ai) {
       const fallback = generateFallbackBriefing(disasterType, location, persona || 'traveler', language || 'en');
       return NextResponse.json(fallback);
     }
 
-    // Call real Gemini 2.5 Flash via official @google/genai SDK
+    // Call real Gemini via official @google/genai SDK (Vertex AI with GCP Credits or AI Studio)
     try {
-      const ai = new GoogleGenAI({ apiKey });
-
       const languageNames: Record<Language, string> = {
         en: 'English',
         ja: 'Japanese (日本語)',
@@ -288,7 +286,7 @@ CRITICAL TSUNAMI ELEVATION LOGIC:
 If disaster is tsunami and elevation < 15m, explicitly issue an urgent vertical evacuation warning to get above 15m or to 4th floor+ of reinforced concrete building immediately.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: modelName,
         contents: [
           {
             role: 'user',
