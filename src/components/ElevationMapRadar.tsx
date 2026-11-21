@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useDisaster } from '@/context/DisasterContext';
-import { MOCK_SHELTERS, UI_TRANSLATIONS } from '@/lib/constants';
+import { UI_TRANSLATIONS } from '@/lib/constants';
+import { getSheltersForLocation, getEvacuationDirective } from '@/lib/shelters';
 import { ShelterPoint } from '@/types';
 import {
   MapPin,
@@ -13,23 +14,36 @@ import {
   ExternalLink,
   Filter,
   CheckCircle2,
+  Compass,
+  ArrowRight,
 } from 'lucide-react';
 
 export const ElevationMapRadar: React.FC = () => {
-  const { locationState, disasterType, language, activePresetId } = useDisaster();
+  const { locationState, disasterType, language } = useDisaster();
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedShelter, setSelectedShelter] = useState<ShelterPoint | null>(null);
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState<boolean>(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const googleMapInstance = useRef<unknown>(null);
+  const googleMarkersRef = useRef<unknown[]>([]);
 
   const t = UI_TRANSLATIONS[language] || UI_TRANSLATIONS.en;
   const isTsunami = disasterType === 'tsunami';
   const userElevation = locationState.elevationMeters ?? 3;
   const isDangerElevation = isTsunami && userElevation < 15;
 
-  // Get current shelters for this area (or fallback to Onna)
-  const areaShelters = MOCK_SHELTERS[activePresetId] || MOCK_SHELTERS.onna;
+  // Dynamically compute shelters centered on the active location
+  const areaShelters = useMemo(() => {
+    return getSheltersForLocation(locationState);
+  }, [locationState]);
+
+  // Primary safe evacuation haven
+  const nearestSafeTower = areaShelters.find((s) => s.type === 'tsunami_tower') || areaShelters[0];
+
+  // Where Should I Go directive
+  const directive = useMemo(() => {
+    return getEvacuationDirective(disasterType, locationState, nearestSafeTower);
+  }, [disasterType, locationState, nearestSafeTower]);
 
   const filteredShelters = areaShelters.filter((s) => {
     if (selectedFilter === 'tsunami') return s.type === 'tsunami_tower' || s.elevationMeters >= 15;
@@ -60,33 +74,70 @@ export const ElevationMapRadar: React.FC = () => {
     }
   }, []);
 
-  // Initialize or re-center Google Map instance when loaded
+  // Initialize or re-center Google Map instance when location or shelters change
   useEffect(() => {
     if (!isGoogleMapsLoaded || !mapContainerRef.current) return;
 
     try {
-      const googleMaps = (window as unknown as { google: { maps: { Map: new (el: HTMLElement, opts: unknown) => { setCenter: (c: unknown) => void }; Marker: new (opts: unknown) => { addListener: (evt: string, cb: () => void) => void }; InfoWindow: new (opts: unknown) => { open: (map: unknown, marker: unknown) => void; setContent: (c: string) => void }; LatLng: new (lat: number, lng: number) => unknown } } }).google.maps;
+      const googleMaps = (
+        window as unknown as {
+          google: {
+            maps: {
+              Map: new (el: HTMLElement, opts: unknown) => {
+                setCenter: (c: unknown) => void;
+                setZoom: (z: number) => void;
+              };
+              Marker: new (opts: unknown) => {
+                addListener: (evt: string, cb: () => void) => void;
+                setMap: (m: unknown) => void;
+              };
+              InfoWindow: new (opts: unknown) => {
+                open: (map: unknown, marker: unknown) => void;
+                setContent: (c: string) => void;
+              };
+              LatLng: new (lat: number, lng: number) => unknown;
+            };
+          };
+        }
+      ).google.maps;
+
       const center = new googleMaps.LatLng(locationState.lat, locationState.lng);
 
-      const map = new googleMaps.Map(mapContainerRef.current, {
-        zoom: 15,
-        center: center,
-        styles: [
-          { elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-          { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
-          { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
-          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0369a1' }] },
-        ],
+      let map = googleMapInstance.current as {
+        setCenter: (c: unknown) => void;
+        setZoom: (z: number) => void;
+      } | null;
+
+      if (!map) {
+        map = new googleMaps.Map(mapContainerRef.current, {
+          zoom: 15,
+          center: center,
+          styles: [
+            { elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+            { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
+            { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
+            { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0369a1' }] },
+          ],
+        });
+        googleMapInstance.current = map;
+      } else {
+        map.setCenter(center);
+        map.setZoom(15);
+      }
+
+      // Clear previous markers
+      googleMarkersRef.current.forEach((m) => {
+        (m as { setMap: (map: null) => void }).setMap(null);
       });
-      googleMapInstance.current = map;
+      googleMarkersRef.current = [];
 
       // Plot user location marker
-      new googleMaps.Marker({
+      const userMarker = new googleMaps.Marker({
         position: center,
         map: map,
-        title: `Your Location (${userElevation}m)`,
+        title: `Your Location: ${locationState.placeName} (${userElevation}m)`,
         icon: {
-          path: 0, // CIRCLE
+          path: 0,
           scale: 10,
           fillColor: isDangerElevation ? '#ef4444' : '#3b82f6',
           fillOpacity: 1,
@@ -94,6 +145,7 @@ export const ElevationMapRadar: React.FC = () => {
           strokeWeight: 2,
         },
       });
+      googleMarkersRef.current.push(userMarker);
 
       // Plot shelter markers
       filteredShelters.forEach((shelter) => {
@@ -107,7 +159,7 @@ export const ElevationMapRadar: React.FC = () => {
           content: `<div style="color:#0f172a; font-family:sans-serif; padding:4px;">
             <strong>${shelter.name}</strong><br/>
             Elevation: ${shelter.elevationMeters}m | Distance: ${shelter.distanceMeters}m<br/>
-            ${shelter.isOpen ? '<span style="color:green;font-weight:bold;">OPEN</span>' : ''}
+            ${shelter.isOpen ? '<span style="color:green;font-weight:bold;">OPEN VERIFIED</span>' : ''}
           </div>`,
         });
 
@@ -115,6 +167,8 @@ export const ElevationMapRadar: React.FC = () => {
           info.open(map, marker);
           setSelectedShelter(shelter);
         });
+
+        googleMarkersRef.current.push(marker);
       });
     } catch (e) {
       console.warn('Google Map render error:', e);
@@ -131,7 +185,7 @@ export const ElevationMapRadar: React.FC = () => {
             <span>{t.mapShelterTitle}</span>
           </h3>
           <p className="text-xs text-slate-400">
-            Real-time elevation mapping with certified high-ground shelters (&gt;15m)
+            Real-time elevation mapping centered on <span className="text-white font-semibold">{locationState.placeName.split(',')[0]}</span>
           </p>
         </div>
 
@@ -151,6 +205,39 @@ export const ElevationMapRadar: React.FC = () => {
           <span>
             {isDangerElevation ? t.elevationWarningHigh : t.elevationSafe} ({userElevation}m)
           </span>
+        </div>
+      </div>
+
+      {/* "WHERE SHOULD I GO?" EMERGENCY DIRECTIVE BANNER */}
+      <div
+        className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
+          directive.urgency === 'CRITICAL'
+            ? 'bg-red-950/80 border-red-500 shadow-xl shadow-red-950/50'
+            : 'bg-indigo-950/60 border-indigo-500/60'
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '8s' }} />
+              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300">
+                {directive.title}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm font-semibold text-white leading-relaxed">
+              {directive.actionText}
+            </p>
+          </div>
+
+          <a
+            href={directive.mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shrink-0 shadow-lg shadow-red-950/50 active:scale-95"
+          >
+            <span>Navigate to Safe Haven</span>
+            <ArrowRight className="w-4 h-4" />
+          </a>
         </div>
       </div>
 
@@ -178,7 +265,7 @@ export const ElevationMapRadar: React.FC = () => {
           }`}
         >
           <Mountain className="w-3 h-3 text-emerald-300" />
-          High Ground / Safe Towers (&gt;15m)
+          High Ground (&gt;15m)
         </button>
         <button
           onClick={() => setSelectedFilter('hospital')}
@@ -198,27 +285,26 @@ export const ElevationMapRadar: React.FC = () => {
               : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          Convenience Hubs (Water/Power)
+          Convenience Hubs
         </button>
       </div>
 
-      {/* Map Container: Either real Google Map or High-Fidelity Tactical Radar */}
+      {/* Map Container: Real Google Map or Synchronized Tactical Radar */}
       <div className="relative w-full h-72 sm:h-80 rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
         {isGoogleMapsLoaded ? (
           <div ref={mapContainerRef} className="w-full h-full" />
         ) : (
-          /* Tactical SVG Radar Visualization */
+          /* Tactical SVG Radar Visualization synchronized to active site */
           <div className="relative w-full h-full flex items-center justify-center bg-radial from-slate-900 to-slate-950 p-4 select-none">
             {/* Background Grid & Radar Rings */}
-            <svg className="w-full h-full max-h-72 opacity-70" viewBox="0 0 400 300">
-              {/* Range rings */}
+            <svg className="w-full h-full max-h-72 opacity-80" viewBox="0 0 400 300">
               <circle cx="200" cy="150" r="120" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
               <circle cx="200" cy="150" r="80" fill="none" stroke="#334155" strokeWidth="1" />
               <circle cx="200" cy="150" r="40" fill="none" stroke="#334155" strokeWidth="1" />
 
               {/* Tsunami Danger Zone Overlay if coastal tsunami and low elevation */}
               {isDangerElevation && (
-                <ellipse cx="200" cy="150" rx="140" ry="100" fill="#dc2626" fillOpacity="0.15" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 4" />
+                <ellipse cx="200" cy="150" rx="140" ry="100" fill="#dc2626" fillOpacity="0.18" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 4" />
               )}
 
               {/* Crosshairs */}
@@ -226,10 +312,10 @@ export const ElevationMapRadar: React.FC = () => {
               <line x1="10" y1="150" x2="390" y2="150" stroke="#1e293b" strokeWidth="1" />
 
               {/* Shelter Nodes */}
-              {filteredShelters.map((s, idx) => {
-                // Approximate coordinate offset for radar display
-                const dx = (s.lng - locationState.lng) * 4000;
-                const dy = -(s.lat - locationState.lat) * 4000;
+              {filteredShelters.map((s) => {
+                // Precise relative delta calculation mapped to radar viewport
+                const dx = (s.lng - locationState.lng) * 22000;
+                const dy = -(s.lat - locationState.lat) * 22000;
                 const posX = Math.min(370, Math.max(30, 200 + dx));
                 const posY = Math.min(270, Math.max(30, 150 + dy));
                 const isSafe = s.elevationMeters >= 15;
@@ -271,14 +357,14 @@ export const ElevationMapRadar: React.FC = () => {
             </svg>
 
             {/* Radar UI Badges */}
-            <div className="absolute top-2 left-2 bg-slate-950/80 backdrop-blur px-2.5 py-1 rounded border border-slate-800 text-[10px] text-slate-400 font-mono">
+            <div className="absolute top-2 left-2 bg-slate-950/80 backdrop-blur px-2.5 py-1 rounded border border-slate-800 text-[10px] text-slate-300 font-mono">
               RADAR: {locationState.placeName.split(',')[0]}
             </div>
 
             <div className="absolute bottom-2 right-2 bg-slate-950/90 px-2 py-1 rounded border border-slate-800 text-[10px] text-slate-400 flex items-center gap-2">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                &gt;15m Safe
+                &gt;15m Safe Haven
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />

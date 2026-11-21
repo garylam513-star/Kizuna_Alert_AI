@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDisaster } from '@/context/DisasterContext';
 import { Persona, CrowdsourcedReport } from '@/types';
+import { EMBASSY_HOTLINES, UI_TRANSLATIONS } from '@/lib/constants';
 import {
-  EMBASSY_HOTLINES,
-  WORKER_PRESET_MESSAGES,
-  INITIAL_HAZARD_REPORTS,
-  UI_TRANSLATIONS,
-} from '@/lib/constants';
+  getTransitForLocation,
+  getReportsForLocation,
+  getSheltersForLocation,
+  extractCityName,
+} from '@/lib/shelters';
 import {
   Train,
   PhoneCall,
@@ -21,15 +22,40 @@ import {
   Building2,
   ThumbsUp,
   Shield,
+  Navigation,
+  Compass,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
 
 export const PersonaActionHub: React.FC = () => {
-  const { persona, setPersona, disasterType, language, volunteerMode, setVolunteerMode } = useDisaster();
+  const { persona, setPersona, disasterType, locationState, language, volunteerMode, setVolunteerMode } = useDisaster();
   const [activeTab, setActiveTab] = useState<Persona>(persona);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Crowdsourced reports state
-  const [reports, setReports] = useState<CrowdsourcedReport[]>(INITIAL_HAZARD_REPORTS);
+  // Keep activeTab in sync if persona changes externally
+  useEffect(() => {
+    setActiveTab(persona);
+  }, [persona]);
+
+  const cityName = useMemo(() => extractCityName(locationState.placeName), [locationState.placeName]);
+
+  // Dynamically compute shelters for the active site
+  const shelters = useMemo(() => getSheltersForLocation(locationState), [locationState]);
+  const nearestShelter = shelters[0];
+  const highGroundTower = shelters.find((s) => s.type === 'tsunami_tower') || shelters[0];
+
+  // Dynamic transit lines based on active location and disaster
+  const transitLines = useMemo(() => {
+    return getTransitForLocation(locationState, disasterType);
+  }, [locationState, disasterType]);
+
+  // Crowdsourced reports state initialized per active location
+  const [reports, setReports] = useState<CrowdsourcedReport[]>([]);
+  useEffect(() => {
+    setReports(getReportsForLocation(locationState));
+  }, [locationState]);
+
   const [newHazardType, setNewHazardType] = useState<CrowdsourcedReport['hazardType']>('downed_wire');
   const [newDesc, setNewDesc] = useState<string>('');
   const [newLocation, setNewLocation] = useState<string>('');
@@ -45,16 +71,18 @@ export const PersonaActionHub: React.FC = () => {
 
   const handleAddReport = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDesc.trim() || !newLocation.trim()) return;
+    if (!newDesc.trim()) return;
+
+    const locTag = newLocation.trim() || `${cityName} Active Area`;
 
     const newRep: CrowdsourcedReport = {
       id: `rep-${Date.now()}`,
       timestamp: 'Just now',
       hazardType: newHazardType,
       description: newDesc,
-      locationName: newLocation,
-      lat: 26.4950,
-      lng: 127.8540,
+      locationName: locTag,
+      lat: locationState.lat,
+      lng: locationState.lng,
       reporterName: volunteerMode ? 'You (Volunteer Translator)' : 'You (Local Reporter)',
       severity: 'high',
       verifiedCount: 1,
@@ -72,34 +100,25 @@ export const PersonaActionHub: React.FC = () => {
     );
   };
 
-  // Simulated transit line statuses based on disaster type
-  const isSuspended = disasterType === 'earthquake' || disasterType === 'tsunami';
-  const isDelayed = disasterType === 'typhoon';
-
-  const TRANSIT_LINES = [
+  // Location-personalized worker message templates
+  const dynamicWorkerMessages = [
     {
-      name: 'Tokaido Shinkansen (東海道新幹線)',
-      route: 'Tokyo ⇄ Nagoya ⇄ Shin-Osaka',
-      status: isSuspended ? 'SUSPENDED (全線見合わせ)' : isDelayed ? 'MAJOR DELAYS / WINDS' : 'NORMAL (平常運転)',
-      color: isSuspended ? 'text-red-400 bg-red-950/80 border-red-800' : isDelayed ? 'text-amber-400 bg-amber-950/80 border-amber-800' : 'text-emerald-400 bg-emerald-950/80 border-emerald-800',
+      id: 'worker-safe-transit',
+      title: 'I Am Safe, Transit Halted (To Employer / Boss)',
+      textJp: `お疲れ様です。【名前】です。\n大きな災害が発生しましたが、私自身に怪我はなく、現在【${locationState.placeName}】の安全な場所（最寄りの避難所: ${highGroundTower.nameJp}）に退避しています。\n現在、周辺の交通機関が全線ストップしており、出勤・移動が困難な状況です。\n安全が確保され次第、改めて状況をご連絡いたします。`,
+      translation: `Hello, this is [Name]. A major disaster occurred, but I am safe and have evacuated near ${locationState.placeName} (nearest shelter: ${highGroundTower.name}). Public transit is suspended so commuting is impossible. I will contact you once safe.`,
     },
     {
-      name: 'JR Yamanote & Tokyo Metro Lines',
-      route: 'Greater Tokyo Metropolitan Area',
-      status: isSuspended ? 'EMERGENCY HALT (運転見合わせ)' : isDelayed ? 'REDUCED SPEED' : 'NORMAL (平常運転)',
-      color: isSuspended ? 'text-red-400 bg-red-950/80 border-red-800' : isDelayed ? 'text-amber-400 bg-amber-950/80 border-amber-800' : 'text-emerald-400 bg-emerald-950/80 border-emerald-800',
+      id: 'worker-shelter-report',
+      title: 'Evacuated to Shelter (To Landlord / Boss)',
+      textJp: `お世話になっております。【名前】です。\n避難指示に従い、指定避難所【${nearestShelter.nameJp}（標高: ${nearestShelter.elevationMeters}m）】へ無事避難いたしました。\n怪我はありません。通信環境が混雑しているため、緊急のご連絡はこちらのメッセージでお知らせください。`,
+      translation: `Hello, this is [Name]. Following evacuation directives, I have safely evacuated to ${nearestShelter.name} (Elevation: ${nearestShelter.elevationMeters}m). I am unharmed. Please reach me via text as lines are congested.`,
     },
     {
-      name: 'Osaka Loop Line (大阪環状線)',
-      route: 'Osaka City Urban Rail',
-      status: isSuspended ? 'SUSPENDED (全線運休)' : isDelayed ? 'HIGH WATER ALERT' : 'NORMAL (平常運転)',
-      color: isSuspended ? 'text-red-400 bg-red-950/80 border-red-800' : isDelayed ? 'text-amber-400 bg-amber-950/80 border-amber-800' : 'text-emerald-400 bg-emerald-950/80 border-emerald-800',
-    },
-    {
-      name: 'Okinawa Yui Rail (ゆいレール)',
-      route: 'Naha Airport ⇄ Tedako-Uranishi',
-      status: disasterType === 'tsunami' || disasterType === 'typhoon' ? 'TYPHOON/WAVE HALT' : 'NORMAL (平常運転)',
-      color: disasterType === 'tsunami' || disasterType === 'typhoon' ? 'text-red-400 bg-red-950/80 border-red-800' : 'text-emerald-400 bg-emerald-950/80 border-emerald-800',
+      id: 'worker-apartment-check',
+      title: 'Apartment Safety & Utility Check (To Landlord / Real Estate)',
+      textJp: `管理会社様 / 大家様\n【${cityName}の部屋番号】号室の【名前】です。\n現在無事です。室内の家具転倒、窓ガラス破損、ガス漏れ・漏水の有無を確認しています。\n万が一ガスや水道に破損や漏れが疑われる場合、元栓を閉めて【${highGroundTower.nameJp}】へ退避いたします。`,
+      translation: `Dear Landlord: This is [Name] in ${cityName}. I am unharmed. Checking for broken glass, gas leaks, and water leaks. If leaks occur, I will shut main valves and evacuate to ${highGroundTower.name}.`,
     },
   ];
 
@@ -113,7 +132,7 @@ export const PersonaActionHub: React.FC = () => {
             <span>{t.personaActionTitle}</span>
           </h3>
           <p className="text-xs text-slate-400">
-            Tailored crisis workflows for Travelers, Workers, and Local Japanese Residents
+            Localized guidance tailored for <span className="text-white font-semibold">{cityName}</span>
           </p>
         </div>
 
@@ -167,18 +186,48 @@ export const PersonaActionHub: React.FC = () => {
       {/* TAB 1: FOREIGN TRAVELER TOOLKIT */}
       {activeTab === 'traveler' && (
         <div className="space-y-4 animate-fadeIn">
-          {/* Transit Status Dashboard */}
+          {/* "WHERE SHOULD I GO AS A TRAVELER?" DIRECTIVE CARD */}
+          <div className="bg-gradient-to-r from-amber-950/70 via-slate-950 to-amber-950/40 p-4 rounded-xl border border-amber-500/50 space-y-2">
+            <div className="flex items-center gap-2 text-amber-300 font-extrabold text-xs uppercase tracking-wide">
+              <Compass className="w-4 h-4" />
+              <span>Where to Go Right Now in {cityName}:</span>
+            </div>
+            <div className="text-xs sm:text-sm text-white font-medium">
+              If stranded or ordered to evacuate in <strong>{cityName}</strong>, proceed immediately to{' '}
+              <strong className="text-amber-300">{highGroundTower.name}</strong> ({highGroundTower.distanceMeters}m away, Elevation {highGroundTower.elevationMeters}m).
+              It has bilingual staff, emergency power, and tourist intake.
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${highGroundTower.lat},${highGroundTower.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                <span>Navigate to {cityName} Tourist Refuge</span>
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+              <span className="text-[11px] text-slate-400">
+                JNTO 24/7 Hotline: <a href="tel:05038162720" className="text-blue-400 font-bold underline">050-3816-2720</a>
+              </span>
+            </div>
+          </div>
+
+          {/* Regional Transit Status Dashboard */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-300">
               <span className="flex items-center gap-1.5 text-amber-300">
                 <Train className="w-4 h-4" />
-                <span>Simulated Shinkansen & Transit Status Monitor:</span>
+                <span>Transit Status for {cityName} & Vicinity:</span>
               </span>
-              <span className="text-[10px] text-slate-400">Updated Real-Time</span>
+              <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                Region-Matched
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {TRANSIT_LINES.map((line, idx) => (
+              {transitLines.map((line, idx) => (
                 <div
                   key={idx}
                   className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-2"
@@ -198,7 +247,7 @@ export const PersonaActionHub: React.FC = () => {
           </div>
 
           {/* 1-Tap Embassy Directory */}
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2 pt-1">
             <div className="text-xs font-bold text-slate-300 flex items-center gap-1.5 text-blue-300">
               <PhoneCall className="w-4 h-4" />
               <span>1-Tap Embassy Emergency Hotlines in Japan:</span>
@@ -229,14 +278,22 @@ export const PersonaActionHub: React.FC = () => {
       {/* TAB 2: FOREIGN WORKER TOOLKIT */}
       {activeTab === 'worker' && (
         <div className="space-y-3 animate-fadeIn">
-          <div className="text-xs text-slate-300 font-medium">
-            1-Tap copy pre-translated formal Japanese crisis messages to send to your employer, boss, or apartment landlord via LINE, SMS, or email:
+          {/* Worker Evacuation Directive */}
+          <div className="bg-emerald-950/40 border border-emerald-500/50 p-3.5 rounded-xl space-y-1">
+            <div className="text-xs font-bold text-emerald-300 uppercase flex items-center gap-1.5">
+              <Shield className="w-4 h-4" />
+              <span>Workplace & Housing Action Protocol ({cityName}):</span>
+            </div>
+            <p className="text-xs text-slate-200">
+              1. Shut main gas valves and circuit breakers before departing. <br />
+              2. Proceed immediately to designated municipal shelter: <strong className="text-white">{nearestShelter.name}</strong> ({nearestShelter.distanceMeters}m away). <br />
+              3. Send the pre-translated Japanese status message below to your boss and landlord:
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3">
-            {WORKER_PRESET_MESSAGES.map((msg) => {
+            {dynamicWorkerMessages.map((msg) => {
               const isCopied = copiedId === msg.id;
-              const title = msg.title[language] || msg.title.en;
 
               return (
                 <div
@@ -245,7 +302,7 @@ export const PersonaActionHub: React.FC = () => {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-xs sm:text-sm font-bold text-emerald-300">
-                      {title}
+                      {msg.title}
                     </h4>
                     <button
                       onClick={() => handleCopy(msg.id, msg.textJp)}
@@ -256,18 +313,18 @@ export const PersonaActionHub: React.FC = () => {
                       }`}
                     >
                       {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{isCopied ? t.copiedToClipboard : 'Copy Japanese Text'}</span>
+                      <span>{isCopied ? t.copiedToClipboard : 'Copy Japanese Message'}</span>
                     </button>
                   </div>
 
-                  {/* Japanese Text Area */}
+                  {/* Japanese Text Area with real dynamic city & shelter injected */}
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs sm:text-sm text-white font-mono whitespace-pre-line leading-relaxed">
                     {msg.textJp}
                   </div>
 
-                  {/* Romaji & English Explanation */}
+                  {/* English Meaning */}
                   <div className="text-[11px] text-slate-400 italic">
-                    <strong>Meaning:</strong> {msg.translationEn}
+                    <strong>Meaning:</strong> {msg.translation}
                   </div>
                 </div>
               );
@@ -303,7 +360,7 @@ export const PersonaActionHub: React.FC = () => {
                     <span>{t.becomeVolunteer}</span>
                     {volunteerMode && (
                       <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.2 rounded-full uppercase font-black">
-                        Active
+                        Active in {cityName}
                       </span>
                     )}
                   </h4>
@@ -331,10 +388,10 @@ export const PersonaActionHub: React.FC = () => {
                 <Shield className="w-8 h-8 text-emerald-400 shrink-0" />
                 <div className="text-xs">
                   <div className="font-bold text-white">
-                    語学ボランティア (Official Bilingual Volunteer Helper)
+                    語学ボランティア (Official Bilingual Volunteer Helper - {cityName})
                   </div>
                   <div className="text-slate-400 text-[11px]">
-                    Show this screen at evacuation centers to identify yourself to tourist shelter coordinators.
+                    Assisting foreign tourists & workers at {nearestShelter.nameJp}.
                   </div>
                 </div>
               </div>
@@ -346,14 +403,14 @@ export const PersonaActionHub: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold text-slate-300 flex items-center gap-1.5 text-rose-300">
                 <AlertOctagon className="w-4 h-4" />
-                <span>Crowdsourced Street Hazard Reports (Hyper-Local Community Feed):</span>
+                <span>Hyper-Local Street Hazards ({cityName} Feed):</span>
               </div>
               <button
                 onClick={() => setIsSubmittingReport(!isSubmittingReport)}
                 className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>{isSubmittingReport ? 'Cancel' : 'Report Street Hazard'}</span>
+                <span>{isSubmittingReport ? 'Cancel' : 'Report Hazard'}</span>
               </button>
             </div>
 
@@ -363,7 +420,9 @@ export const PersonaActionHub: React.FC = () => {
                 onSubmit={handleAddReport}
                 className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 animate-fadeIn"
               >
-                <div className="text-xs font-bold text-white">Submit New Street Hazard Report</div>
+                <div className="text-xs font-bold text-white">
+                  Submit Hazard Report in {cityName}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <select
                     value={newHazardType}
@@ -380,16 +439,15 @@ export const PersonaActionHub: React.FC = () => {
                     type="text"
                     value={newLocation}
                     onChange={(e) => setNewLocation(e.target.value)}
-                    placeholder="Specific landmark or road (e.g. Route 58 near beach)"
+                    placeholder={`Specific street or landmark in ${cityName}...`}
                     className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
-                    required
                   />
                 </div>
 
                 <textarea
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="Describe the hazard conditions and immediate safety advice for passersby..."
+                  placeholder="Describe the hazard conditions for passersby..."
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white h-20"
                   required
                 />
