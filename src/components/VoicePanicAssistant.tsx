@@ -283,17 +283,22 @@ export const VoicePanicAssistant: React.FC = () => {
       {/* Voice Result Display Card */}
       {voiceResult && (
         <div className="bg-slate-950/90 border-2 border-red-500/60 rounded-xl p-4 space-y-2.5 animate-fadeIn shadow-2xl">
-          <div className="flex items-center justify-between text-xs text-red-300 font-bold border-b border-white/10 pb-2">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-red-400" />
-              <span>Voice Copilot Spoken Guidance:</span>
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-red-300 font-bold border-b border-white/10 pb-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-red-400" />
+                <span>Voice Copilot Spoken Guidance:</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-red-950 text-red-300 border border-red-700/60 text-[10px] font-bold">
+                📍 {locationState.placeName} ({locationState.elevationMeters?.toFixed(1) || '0'}m)
+              </span>
+            </div>
             <button
-              onClick={() => audioEngine.speak(voiceResult.spokenText, SPEECH_LANG_CODES[language] || 'en-US')}
-              className="flex items-center gap-1 text-[11px] text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500"
+              onClick={() => audioEngine.speak(voiceResult.answerText, SPEECH_LANG_CODES[language] || 'en-US')}
+              className="flex items-center gap-1.5 text-[11px] text-white bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-700 hover:border-slate-500 transition shadow"
             >
               <Volume2 className="w-3.5 h-3.5 text-blue-400" />
-              Replay Audio
+              <span>Replay Audio</span>
             </button>
           </div>
 

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <rect x="5" y="5" width="590" height="390" rx="15" fill="#451a03" stroke="#f59e0b" stroke-width="8" />
+  
+  <!-- Header -->
+  <rect x="25" y="25" width="550" height="75" rx="8" fill="#d97706" />
+  <text x="300" y="75" font-family="'Hiragino Sans', 'Meiryo', sans-serif" font-weight="900" font-size="36" fill="#ffffff" text-anchor="middle">⚡ 感電危険！切断電線接近禁止</text>
+  
+  <text x="300" y="125" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#fde68a" text-anchor="middle" letter-spacing="1">DANGER: DOWNED HIGH-VOLTAGE POWER LINE</text>
+
+  <!-- Graphic -->
+  <rect x="40" y="150" width="520" height="150" rx="10" fill="#1e293b" stroke="#eab308" stroke-width="2" />
+  
+  <!-- Utility pole -->
+  <rect x="80" y="160" width="16" height="130" fill="#94a3b8" />
+  <rect x="60" y="175" width="56" height="8" fill="#64748b" />
+  
+  <!-- Severed wire with spark -->
+  <path d="M 110 180 Q 200 230, 280 270" stroke="#facc15" stroke-width="6" fill="none" stroke-linecap="round" />
+  <circle cx="280" cy="270" r="14" fill="#ef4444" opacity="0.8" />
+  <circle cx="280" cy="270" r="7" fill="#fef08a" />
+  
+  <g fill="#fef08a" font-family="'Hiragino Sans', sans-serif" font-weight="bold">
+    <text x="320" y="210" font-size="20">高電圧 6,600V 通電中</text>
+    <text x="320" y="240" font-size="16" fill="#f87171">10m以内に近づかないでください</text>
+    <text x="320" y="270" font-size="14" fill="#e2e8f0">電力会社・消防へ直ちに連絡</text>
+  </g>
+
+  <text x="300" y="355" font-family="'Hiragino Sans', sans-serif" font-size="16" fill="#fed7aa" text-anchor="middle">電力送配電保安課 / Power Transmission Security</text>
+</svg>
