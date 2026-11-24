@@ -13,10 +13,10 @@
 Cloud Run : https://kizuna-alert-ai-294002870946.asia-northeast1.run.app/
 
 ---
-![App Screenshot](Pic1.png)
-![App Screenshot](Pic2.png)
-![App Screenshot](Pic3.png)
-![App Screenshot](Pic4.png)
+![App Screenshot](Pic1.PNG)
+![App Screenshot](Pic2.PNG)
+![App Screenshot](Pic3.PNG)
+![App Screenshot](Pic4.PNG)
 
 
 ## 🌟 Key Highlights & Architecture
