@@ -10,6 +10,9 @@
 [![PWA Ready](https://img.shields.io/badge/PWA-Installable_Offline_Ready-green?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 
 ---
+Cloud Run : https://kizuna-alert-ai-294002870946.asia-northeast1.run.app/
+
+---
 ![App Screenshot](Pic1.png)
 ![App Screenshot](Pic2.png)
 ![App Screenshot](Pic3.png)
